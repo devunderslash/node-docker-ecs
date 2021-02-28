@@ -22,7 +22,7 @@ resource "aws_ecs_cluster" "my_cluster" {
     name = "my_cluster" #Cluster name
 }
 
-#Tasj Definition
+#Task Definition
 resource "aws_ecs_task_definition" "ecs_task" {
   family                   = "ecs-task" # Naming our first task
   container_definitions    = <<DEFINITION
@@ -46,12 +46,12 @@ resource "aws_ecs_task_definition" "ecs_task" {
   network_mode             = "awsvpc"    # Using awsvpc as our network mode as this is required for Fargate
   memory                   = 512         # Specifying the memory our container requires
   cpu                      = 256         # Specifying the CPU our container requires
-  execution_role_arn       = "${aws_iam_role.ecsTaskExecutionRole.arn}"
+  execution_role_arn       = aws_iam_role.ecsTaskExecutionRole.arn
 }
 
 resource "aws_iam_role" "ecsTaskExecutionRole" {
   name               = "ecsTaskExecutionRole"
-  assume_role_policy = "${data.aws_iam_policy_document.assume_role_policy.json}"
+  assume_role_policy = data.aws_iam_policy_document.assume_role_policy.json
 }
 
 data "aws_iam_policy_document" "assume_role_policy" {
@@ -66,6 +66,42 @@ data "aws_iam_policy_document" "assume_role_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
-  role       = "${aws_iam_role.ecsTaskExecutionRole.name}"
+  role       = aws_iam_role.ecsTaskExecutionRole.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
+
+#Service
+resource "aws_ecs_service" "my_first_service" {
+  name            = "my-first-service"                             # Naming our first service
+  cluster         = aws_ecs_cluster.my_cluster.id             # Referencing our created Cluster
+  task_definition = aws_ecs_task_definition.ecs_task.arn # Referencing the task our service will spin up
+  launch_type     = "FARGATE"
+  desired_count   = 3 # Setting the number of containers we want deployed to 3
+
+#Added the below to reference the subnets added
+  network_configuration {
+    subnets          = [aws_default_subnet.default_subnet_a.id, aws_default_subnet.default_subnet_b.id, aws_default_subnet.default_subnet_c.id]
+    assign_public_ip = true # Providing our containers with public IPs
+  }
+}
+
+#When using Fargate we need to specify network VPC defaul with 3 subnets in 3 AZ's
+
+# Providing a reference to our default VPC
+resource "aws_default_vpc" "default_vpc" {
+}
+
+# Providing a reference to our default subnets
+resource "aws_default_subnet" "default_subnet_a" {
+  availability_zone = "eu-west-2a"
+}
+
+resource "aws_default_subnet" "default_subnet_b" {
+  availability_zone = "eu-west-2b"
+}
+
+resource "aws_default_subnet" "default_subnet_c" {
+  availability_zone = "eu-west-2c"
+}
+
+
