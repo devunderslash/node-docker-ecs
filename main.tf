@@ -14,21 +14,21 @@ provider "aws" {
 }
 
 resource "aws_ecr_repository" "giving_ecs_a_go" {
-    name = "giving_ecs_a_go" #Repo name
+    name = "giving-ecs-a-go" #Repo name
 }
 
 #ECS
 resource "aws_ecs_cluster" "my_cluster" {
-    name = "my_cluster" #Cluster name
+    name = "my-cluster" #Cluster name
 }
 
 #Task Definition
-resource "aws_ecs_task_definition" "ecs_task" {
-  family                   = "ecs_task" # Naming our first task
+resource "aws_ecs_task_definition" "ecs_tasking" {
+  family                   = "ecs-tasking" # Naming our first task
   container_definitions    = <<DEFINITION
   [
     {
-      "name": "ecs-task",
+      "name": "ecs-tasking",
       "image": "${aws_ecr_repository.giving_ecs_a_go.repository_url}",
       "essential": true,
       "portMappings": [
@@ -72,16 +72,16 @@ resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
 
 #Service
 resource "aws_ecs_service" "my_first_service" {
-  name            = "my-first-service"                             # Naming our first service
+  name            = "my_first_service"                             # Naming our first service
   cluster         = aws_ecs_cluster.my_cluster.id             # Referencing our created Cluster
-  task_definition = aws_ecs_task_definition.ecs_task.arn # Referencing the task our service will spin up
+  task_definition = aws_ecs_task_definition.ecs_tasking.arn # Referencing the task our service will spin up
   launch_type     = "FARGATE"
   desired_count   = 3 # Setting the number of containers we want deployed to 3
 
 #Add Load Balancer to Service after ALB Creation to link to ECS
 load_balancer {
     target_group_arn = aws_lb_target_group.target_group.arn # Referencing our target group
-    container_name   = aws_ecs_task_definition.ecs_task.family # Task Name
+    container_name   = aws_ecs_task_definition.ecs_tasking.family # Task Name
     container_port   = 3000 # Specifying the container port
   }
 
@@ -160,17 +160,13 @@ resource "aws_security_group" "load_balancer_security_group" {
   }
 }
 
-#Direct Traffic to Target grouyps
+#Direct Traffic to Target groups
 resource "aws_lb_target_group" "target_group" {
   name        = "target-group"
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_default_vpc.default_vpc.id # Referencing the default VPC
-  health_check {
-    matcher = "200,301,302"
-    path = "/"
-  }
 }
 
 resource "aws_lb_listener" "listener" {
@@ -179,7 +175,7 @@ resource "aws_lb_listener" "listener" {
   protocol          = "HTTP"
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.target_group.arn # Referencing our tagrte group
+    target_group_arn = aws_lb_target_group.target_group.arn # Referencing our target group
   }
 }
 
